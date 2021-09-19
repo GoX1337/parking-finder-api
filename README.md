@@ -1,5 +1,7 @@
 # parking-finder-api
 
+Add you Bordeaux API key in : src/main/resources/application.yml
+
 Build:
 ```
 mvn clean install
