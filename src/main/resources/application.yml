@@ -1,0 +1,6 @@
+bordeaux:
+  api:
+    baseUrl: "http://data.lacub.fr/wfs"
+    key: "your_api_key"
+
+
