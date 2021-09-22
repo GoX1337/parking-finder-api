@@ -1,8 +1,8 @@
 package com.gox.parking.finder.api.service.impl;
 
+import com.gox.parking.finder.api.assembler.ParkingAssembler;
 import com.gox.parking.finder.api.config.WfsRestTemplate;
 import com.gox.parking.finder.api.dto.ParkingDto;
-import com.gox.parking.finder.api.assembler.ParkingAssembler;
 import com.gox.parking.finder.api.jaxb.ogc.DWithin;
 import com.gox.parking.finder.api.jaxb.ogc.Distance;
 import com.gox.parking.finder.api.jaxb.ogc.Filter;
@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.xml.bind.JAXBException;
 import java.util.ArrayList;
@@ -40,8 +41,6 @@ public class BordeauxParkingServiceImpl implements BordeauxParkingService {
     @Value("${bordeaux.api.key}")
     private String key;
 
-    private final static String urlParams = "SERVICE=WFS&VERSION=1.1.0&REQUEST=GetFeature&TYPENAME=ST_PARK_P&SRSNAME=EPSG:4326";
-
     public BordeauxParkingServiceImpl(WfsRestTemplate wfsRestTemplate, ParkingAssembler parkingAssembler, FilterXMLMarshaller filterXMLMarshaller) {
         this.wfsRestTemplate = wfsRestTemplate;
         this.parkingAssembler = parkingAssembler;
@@ -49,26 +48,22 @@ public class BordeauxParkingServiceImpl implements BordeauxParkingService {
     }
 
     /**
-     * Build a WFS OGC filter string
-     * ex :
-     * <Filter>
-     *    <DWithin>
-     *       <PropertyName>the_geom</PropertyName>
-     *       <gml:Point srsName="EPSG:4326">
-     *           <gml:pos>44.827794 -0.689417</gml:pos>
-     *        </gml:Point>
-     *       <Distance units="meter">1500</Distance>
-     *    </DWithin>
-     * </Filter>
-     * @param filter jaxb annotated object
-     * @return XML string filter
+     * Build a WFS WS URL
+     * @param filter jaxb annotated filter object
+     * @return WFS endpoint url with request params
      */
     private String buildUrl(Filter filter){
-        String url = baseUrl + "?key=" + key + "&" + urlParams;
+        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(baseUrl)
+                .queryParam("KEY", key)
+                .queryParam("SERVICE", "WFS")
+                .queryParam("VERSION", "1.1.0")
+                .queryParam("REQUEST", "GetFeature")
+                .queryParam("TYPENAME", "ST_PARK_P")
+                .queryParam("SRSNAME", "EPSG:4326");
+        String url = builder.toUriString();
         if(filter != null){
             try {
-                String filterXmlStr = filterXMLMarshaller.marshalFilter(filter);
-                url += "&filter=" + filterXmlStr;
+               url += "&filter=" + filterXMLMarshaller.marshalFilter(filter);
             } catch (JAXBException e) {
                 log.error("Error XML marshalling the filter object");
             }
@@ -93,7 +88,7 @@ public class BordeauxParkingServiceImpl implements BordeauxParkingService {
 
     /**
      * {@inheritDoc}
-     *  (Service dedicated to Bordeaux city)
+     * (Service dedicated to Bordeaux city)
      */
     @Override
     public List<ParkingDto> findAllParkingNear(float latitude, float longitude, int distance) {
@@ -103,6 +98,7 @@ public class BordeauxParkingServiceImpl implements BordeauxParkingService {
             FeatureCollection featureCollection = wfsRestTemplate.getForObject(url, FeatureCollection.class, 200);
             return buildParkingDtoList(featureCollection);
         } catch (RestClientException ex){
+            ex.printStackTrace();
             log.error("findAllParkingNear WFS call error {}", ex.getMessage());
             throw ex;
         }
@@ -110,6 +106,16 @@ public class BordeauxParkingServiceImpl implements BordeauxParkingService {
 
     /**
      * Build a new filter object for the WFS filter DWithin
+     * ex :
+     * <Filter>
+     *    <DWithin>
+     *       <PropertyName>the_geom</PropertyName>
+     *       <gml:Point srsName="EPSG:4326">
+     *           <gml:pos>44.827794 -0.689417</gml:pos>
+     *        </gml:Point>
+     *       <Distance units="meter">1500</Distance>
+     *    </DWithin>
+     * </Filter>
      * @param latitude latitude of the search center area
      * @param longitude longitude of the search center area
      * @param distance search distance around the center at latitude/longitude

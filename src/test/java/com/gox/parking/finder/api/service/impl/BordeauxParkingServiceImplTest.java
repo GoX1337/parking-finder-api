@@ -13,6 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import javax.xml.bind.JAXBException;
 
@@ -32,6 +33,8 @@ class BordeauxParkingServiceImplTest {
     @BeforeEach
     void setUp() throws JAXBException {
         bordeauxParkingService = new BordeauxParkingServiceImpl(wfsRestTemplate, new ParkingAssembler(), new FilterXMLMarshaller());
+        ReflectionTestUtils.setField(bordeauxParkingService, "baseUrl", "http://mock.com/wfs");
+        ReflectionTestUtils.setField(bordeauxParkingService, "key", "12345");
     }
 
     @Test
@@ -70,7 +73,7 @@ class BordeauxParkingServiceImplTest {
         featureCollection.getFeatureMembers().add(fm1);
         featureCollection.getFeatureMembers().add(fm2);
 
-        when(wfsRestTemplate.getForObject("null?key=null&SERVICE=WFS&VERSION=1.1.0&REQUEST=GetFeature&TYPENAME=ST_PARK_P&SRSNAME=EPSG:4326", FeatureCollection.class, 200)).thenReturn(featureCollection);
+        when(wfsRestTemplate.getForObject("http://mock.com/wfs?KEY=12345&SERVICE=WFS&VERSION=1.1.0&REQUEST=GetFeature&TYPENAME=ST_PARK_P&SRSNAME=EPSG:4326", FeatureCollection.class, 200)).thenReturn(featureCollection);
         List<ParkingDto> pkgs = bordeauxParkingService.findAllParkings();
         assertEquals(2, pkgs.size());
         assertEquals("PKG1", pkgs.get(0).getIdent());
@@ -115,7 +118,7 @@ class BordeauxParkingServiceImplTest {
         featureCollection.getFeatureMembers().add(fm1);
         featureCollection.getFeatureMembers().add(fm2);
 
-        when(wfsRestTemplate.getForObject("null?key=null&SERVICE=WFS&VERSION=1.1.0&REQUEST=GetFeature&TYPENAME=ST_PARK_P&SRSNAME=EPSG:4326&filter=<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><Filter xmlns:ns2=\"http://www.opengis.net/gml\"><DWithin><PropertyName>the_geom</PropertyName><Point srsName=\"EPSG:4326\"><ns2:pos>44.827793 -0.689417</ns2:pos></Point><Distance units=\"meters\">1500</Distance></DWithin></Filter>", FeatureCollection.class, 200)).thenReturn(featureCollection);
+        when(wfsRestTemplate.getForObject("http://mock.com/wfs?KEY=12345&SERVICE=WFS&VERSION=1.1.0&REQUEST=GetFeature&TYPENAME=ST_PARK_P&SRSNAME=EPSG:4326&filter=<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><Filter xmlns:ns2=\"http://www.opengis.net/gml\"><DWithin><PropertyName>the_geom</PropertyName><Point srsName=\"EPSG:4326\"><ns2:pos>44.827793 -0.689417</ns2:pos></Point><Distance units=\"meters\">1500</Distance></DWithin></Filter>", FeatureCollection.class, 200)).thenReturn(featureCollection);
         List<ParkingDto> pkgs = bordeauxParkingService.findAllParkingNear(44.827794f, -0.689417f, 1500);
         assertEquals(2, pkgs.size());
         assertEquals("PKG1", pkgs.get(0).getIdent());
