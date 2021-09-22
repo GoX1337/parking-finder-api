@@ -84,18 +84,11 @@ public class BordeauxParkingServiceImpl implements BordeauxParkingService {
     public List<ParkingDto> findAllParkings() {
         try {
             FeatureCollection featureCollection = wfsRestTemplate.getForObject(buildUrl(null), FeatureCollection.class, 200);
-            if(featureCollection != null){
-                // iterate on response feature members, transform and collect in a parking dto list
-                return featureCollection.getFeatureMembers()
-                        .stream()
-                        .map(parkingAssembler::wfsFeatureMemberToParkingDto)
-                        .collect(Collectors.toList());
-            }
+            return buildParkingDtoList(featureCollection);
         } catch (RestClientException ex){
             log.error("findAllParkings WFS call error {}", ex.getMessage());
             throw ex;
         }
-        return new ArrayList<>();
     }
 
     /**
@@ -108,18 +101,11 @@ public class BordeauxParkingServiceImpl implements BordeauxParkingService {
             Filter filter = buildFilter(latitude, longitude, distance);
             String url = buildUrl(filter);
             FeatureCollection featureCollection = wfsRestTemplate.getForObject(url, FeatureCollection.class, 200);
-            if(featureCollection != null){
-                // iterate on response feature members, transform and collect in a parking dto list
-                return featureCollection.getFeatureMembers()
-                        .stream()
-                        .map(parkingAssembler::wfsFeatureMemberToParkingDto)
-                        .collect(Collectors.toList());
-            }
+            return buildParkingDtoList(featureCollection);
         } catch (RestClientException ex){
             log.error("findAllParkingNear WFS call error {}", ex.getMessage());
             throw ex;
         }
-        return new ArrayList<>();
     }
 
     /**
@@ -146,5 +132,21 @@ public class BordeauxParkingServiceImpl implements BordeauxParkingService {
         Filter filter = new Filter();
         filter.setDWithin(dWithin);
         return filter;
+    }
+
+    /**
+     * Build a parking dto list from feature collection
+     * @param featureCollection response object from WFS WS
+     * @return a list of parking dto objects
+     */
+    private List<ParkingDto> buildParkingDtoList(FeatureCollection featureCollection){
+        if(featureCollection != null){
+            // iterate on response feature members, transform and collect in a parking dto list
+            return featureCollection.getFeatureMembers()
+                    .stream()
+                    .map(parkingAssembler::wfsFeatureMemberToParkingDto)
+                    .collect(Collectors.toList());
+        }
+        return new ArrayList<>();
     }
 }
